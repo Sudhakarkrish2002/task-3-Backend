@@ -6,7 +6,9 @@ import {
   getAllCourses,
   getCourseById,
   getMyCourses,
-  publishCourse
+  publishCourse,
+  getCourseSyllabus,
+  updateCourseSyllabus
 } from '../controllers/courseController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -21,6 +23,8 @@ router.get('/my-courses/list', protect, authorize('admin', 'content_writer'), ge
 
 // Specific routes before dynamic :id
 router.put('/:id/publish', protect, authorize('admin'), publishCourse);
+router.get('/:id/syllabus', getCourseSyllabus);
+router.put('/:id/syllabus', protect, authorize('admin', 'content_writer'), updateCourseSyllabus);
 
 // Dynamic routes
 router.get('/:id', getCourseById);

@@ -109,7 +109,46 @@ const courseSchema = new mongoose.Schema({
     default: false
   },
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  syllabus: {
+    overview: {
+      type: String,
+      default: ''
+    },
+    modules: [{
+      title: {
+        type: String,
+        required: true
+      },
+      duration: {
+        type: String,
+        default: ''
+      },
+      topics: [{
+        type: String
+      }]
+    }],
+    learningOutcomes: [{
+      type: String
+    }],
+    prerequisites: [{
+      type: String
+    }],
+    projects: [{
+      name: {
+        type: String,
+        required: true
+      },
+      description: {
+        type: String,
+        default: ''
+      }
+    }],
+    certification: {
+      type: String,
+      default: ''
+    }
+  }
 }, {
   timestamps: true
 });

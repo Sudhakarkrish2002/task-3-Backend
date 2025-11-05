@@ -10,7 +10,6 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, 'Please provide an email'],
-    unique: true,
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email']
@@ -213,6 +212,9 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Compound unique index: same email can exist for different roles
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

@@ -349,3 +349,96 @@ export const publishCourse = async (req, res) => {
     });
   }
 };
+
+// @desc    Get course syllabus
+// @route   GET /api/courses/:id/syllabus
+// @access  Public
+export const getCourseSyllabus = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id)
+      .select('title description duration price syllabus');
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    // For public, only show published and active courses
+    if (!req.user || req.user.role !== 'admin') {
+      if (!course.isPublished || !course.isActive) {
+        return res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        courseId: course._id,
+        title: course.title,
+        description: course.description,
+        duration: course.duration,
+        fee: course.price,
+        syllabus: course.syllabus || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching course syllabus',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update course syllabus
+// @route   PUT /api/courses/:id/syllabus
+// @access  Private/Admin or Content Writer
+export const updateCourseSyllabus = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    // Check if user is authorized (admin or the creator)
+    if (req.user.role !== 'admin' && course.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this course syllabus'
+      });
+    }
+
+    const { overview, modules, learningOutcomes, prerequisites, projects, certification } = req.body;
+
+    // Update syllabus fields
+    if (overview !== undefined) course.syllabus.overview = overview;
+    if (modules !== undefined) course.syllabus.modules = modules;
+    if (learningOutcomes !== undefined) course.syllabus.learningOutcomes = learningOutcomes;
+    if (prerequisites !== undefined) course.syllabus.prerequisites = prerequisites;
+    if (projects !== undefined) course.syllabus.projects = projects;
+    if (certification !== undefined) course.syllabus.certification = certification;
+
+    await course.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Course syllabus updated successfully',
+      data: course.syllabus
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating course syllabus',
+      error: error.message
+    });
+  }
+};

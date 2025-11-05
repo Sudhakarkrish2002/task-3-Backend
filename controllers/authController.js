@@ -25,12 +25,12 @@ export const register = async (req, res) => {
       });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    // Check if user already exists with same email and role combination
+    const existingUser = await User.findOne({ email, role });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email'
+        message: `An account with this email already exists as ${role}. Please login instead.`
       });
     }
 
@@ -120,7 +120,7 @@ export const register = async (req, res) => {
 // @access  Public
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     // Validate
     if (!email || !password) {
@@ -130,10 +130,27 @@ export const login = async (req, res) => {
       });
     }
 
+    // If role is provided, find user by email + role combination
+    // Otherwise, find any user with that email (for backward compatibility)
+    let query = { email };
+    if (role) {
+      query.role = role;
+    }
+
     // Find user and include password
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne(query).select('+password');
 
     if (!user) {
+      // If role was specified, check if email exists with different role
+      if (role) {
+        const emailExists = await User.findOne({ email });
+        if (emailExists) {
+          return res.status(401).json({
+            success: false,
+            message: `No ${role} account found with this email. Please check your role selection.`
+          });
+        }
+      }
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
