@@ -122,6 +122,42 @@ export const updateCourse = async (req, res) => {
       }
     });
 
+    // Handle syllabus update if provided
+    if (req.body.syllabus !== undefined) {
+      // Initialize syllabus object if it doesn't exist
+      if (!course.syllabus) {
+        course.syllabus = {
+          overview: '',
+          modules: [],
+          learningOutcomes: [],
+          prerequisites: [],
+          projects: [],
+          certification: ''
+        };
+      }
+
+      const { overview, modules, learningOutcomes, prerequisites, projects, certification } = req.body.syllabus;
+
+      if (overview !== undefined) {
+        course.syllabus.overview = overview;
+      }
+      if (modules !== undefined && Array.isArray(modules)) {
+        course.syllabus.modules = modules;
+      }
+      if (learningOutcomes !== undefined && Array.isArray(learningOutcomes)) {
+        course.syllabus.learningOutcomes = learningOutcomes;
+      }
+      if (prerequisites !== undefined && Array.isArray(prerequisites)) {
+        course.syllabus.prerequisites = prerequisites;
+      }
+      if (projects !== undefined && Array.isArray(projects)) {
+        course.syllabus.projects = projects;
+      }
+      if (certification !== undefined) {
+        course.syllabus.certification = certification;
+      }
+    }
+
     await course.save();
 
     res.status(200).json({
@@ -140,7 +176,7 @@ export const updateCourse = async (req, res) => {
 
 // @desc    Delete a course
 // @route   DELETE /api/courses/:id
-// @access  Private/Admin
+// @access  Private/Admin or Content Writer (own courses)
 export const deleteCourse = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
@@ -149,6 +185,14 @@ export const deleteCourse = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Course not found'
+      });
+    }
+
+    // Check if user is authorized (admin or the creator)
+    if (req.user.role !== 'admin' && course.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this course'
       });
     }
 
@@ -312,9 +356,9 @@ export const getMyCourses = async (req, res) => {
   }
 };
 
-// @desc    Publish a course
+// @desc    Publish/Unpublish a course
 // @route   PUT /api/courses/:id/publish
-// @access  Private/Admin
+// @access  Private/Admin or Content Writer (own courses)
 export const publishCourse = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
@@ -326,25 +370,97 @@ export const publishCourse = async (req, res) => {
       });
     }
 
-    if (course.isPublished) {
-      return res.status(400).json({
+    // Check if user is authorized (admin or the creator)
+    if (req.user.role !== 'admin' && course.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
         success: false,
-        message: 'Course is already published'
+        message: 'Not authorized to publish this course'
       });
     }
 
-    course.isPublished = true;
+    // Handle course details update if provided (for save and publish workflow)
+    const allowedFields = [
+      'title', 'description', 'shortDescription', 'category', 'instructor',
+      'price', 'originalPrice', 'duration', 'level', 'language', 'thumbnail',
+      'videoPreview', 'curriculum', 'learningOutcomes', 'prerequisites',
+      'tags', 'certificateIncluded', 'placementGuaranteed', 'startDate',
+      'endDate', 'isActive'
+    ];
+
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        course[field] = req.body[field];
+      }
+    });
+
+    // Handle syllabus update if provided (for save and publish workflow)
+    if (req.body.syllabus !== undefined) {
+      // Initialize syllabus object if it doesn't exist
+      if (!course.syllabus) {
+        course.syllabus = {
+          overview: '',
+          modules: [],
+          learningOutcomes: [],
+          prerequisites: [],
+          projects: [],
+          certification: ''
+        };
+      }
+
+      const { overview, modules, learningOutcomes, prerequisites, projects, certification } = req.body.syllabus;
+
+      if (overview !== undefined) {
+        course.syllabus.overview = overview;
+      }
+      if (modules !== undefined && Array.isArray(modules)) {
+        course.syllabus.modules = modules;
+      }
+      if (learningOutcomes !== undefined && Array.isArray(learningOutcomes)) {
+        course.syllabus.learningOutcomes = learningOutcomes;
+      }
+      if (prerequisites !== undefined && Array.isArray(prerequisites)) {
+        course.syllabus.prerequisites = prerequisites;
+      }
+      if (projects !== undefined && Array.isArray(projects)) {
+        course.syllabus.projects = projects;
+      }
+      if (certification !== undefined) {
+        course.syllabus.certification = certification;
+      }
+    }
+
+    // Toggle publish status
+    const { action } = req.body; // 'publish' or 'unpublish'
+    
+    if (action === 'unpublish') {
+      if (!course.isPublished) {
+        return res.status(400).json({
+          success: false,
+          message: 'Course is already unpublished'
+        });
+      }
+      course.isPublished = false;
+    } else {
+      if (course.isPublished) {
+        return res.status(400).json({
+          success: false,
+          message: 'Course is already published'
+        });
+      }
+      course.isPublished = true;
+    }
+
     await course.save();
 
     res.status(200).json({
       success: true,
-      message: 'Course published successfully',
+      message: `Course ${action === 'unpublish' ? 'unpublished' : 'published'} successfully`,
       data: course
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error publishing course',
+      message: 'Error updating course publish status',
       error: error.message
     });
   }
@@ -419,13 +535,37 @@ export const updateCourseSyllabus = async (req, res) => {
 
     const { overview, modules, learningOutcomes, prerequisites, projects, certification } = req.body;
 
-    // Update syllabus fields
-    if (overview !== undefined) course.syllabus.overview = overview;
-    if (modules !== undefined) course.syllabus.modules = modules;
-    if (learningOutcomes !== undefined) course.syllabus.learningOutcomes = learningOutcomes;
-    if (prerequisites !== undefined) course.syllabus.prerequisites = prerequisites;
-    if (projects !== undefined) course.syllabus.projects = projects;
-    if (certification !== undefined) course.syllabus.certification = certification;
+    // Initialize syllabus object if it doesn't exist
+    if (!course.syllabus) {
+      course.syllabus = {
+        overview: '',
+        modules: [],
+        learningOutcomes: [],
+        prerequisites: [],
+        projects: [],
+        certification: ''
+      };
+    }
+
+    // Update syllabus fields - only update if provided
+    if (overview !== undefined) {
+      course.syllabus.overview = overview;
+    }
+    if (modules !== undefined && Array.isArray(modules)) {
+      course.syllabus.modules = modules;
+    }
+    if (learningOutcomes !== undefined && Array.isArray(learningOutcomes)) {
+      course.syllabus.learningOutcomes = learningOutcomes;
+    }
+    if (prerequisites !== undefined && Array.isArray(prerequisites)) {
+      course.syllabus.prerequisites = prerequisites;
+    }
+    if (projects !== undefined && Array.isArray(projects)) {
+      course.syllabus.projects = projects;
+    }
+    if (certification !== undefined) {
+      course.syllabus.certification = certification;
+    }
 
     await course.save();
 

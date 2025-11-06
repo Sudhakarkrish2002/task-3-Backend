@@ -120,13 +120,20 @@ const courseSchema = new mongoose.Schema({
         type: String,
         required: true
       },
+      description: {
+        type: String,
+        default: ''
+      },
       duration: {
         type: String,
         default: ''
       },
+      learningOutcomes: [{
+        type: String
+      }],
       topics: [{
         type: String
-      }]
+      }] // Keep for backward compatibility
     }],
     learningOutcomes: [{
       type: String
