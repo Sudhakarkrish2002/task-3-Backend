@@ -132,11 +132,12 @@ export const updateCourse = async (req, res) => {
           learningOutcomes: [],
           prerequisites: [],
           projects: [],
+          instructors: [],
           certification: ''
         };
       }
 
-      const { overview, modules, learningOutcomes, prerequisites, projects, certification } = req.body.syllabus;
+      const { overview, modules, learningOutcomes, prerequisites, projects, instructors, certification } = req.body.syllabus;
 
       if (overview !== undefined) {
         course.syllabus.overview = overview;
@@ -152,6 +153,9 @@ export const updateCourse = async (req, res) => {
       }
       if (projects !== undefined && Array.isArray(projects)) {
         course.syllabus.projects = projects;
+      }
+      if (instructors !== undefined && Array.isArray(instructors)) {
+        course.syllabus.instructors = instructors;
       }
       if (certification !== undefined) {
         course.syllabus.certification = certification;
@@ -403,11 +407,12 @@ export const publishCourse = async (req, res) => {
           learningOutcomes: [],
           prerequisites: [],
           projects: [],
+          instructors: [],
           certification: ''
         };
       }
 
-      const { overview, modules, learningOutcomes, prerequisites, projects, certification } = req.body.syllabus;
+      const { overview, modules, learningOutcomes, prerequisites, projects, instructors, certification } = req.body.syllabus;
 
       if (overview !== undefined) {
         course.syllabus.overview = overview;
@@ -423,6 +428,9 @@ export const publishCourse = async (req, res) => {
       }
       if (projects !== undefined && Array.isArray(projects)) {
         course.syllabus.projects = projects;
+      }
+      if (instructors !== undefined && Array.isArray(instructors)) {
+        course.syllabus.instructors = instructors;
       }
       if (certification !== undefined) {
         course.syllabus.certification = certification;
@@ -468,11 +476,11 @@ export const publishCourse = async (req, res) => {
 
 // @desc    Get course syllabus
 // @route   GET /api/courses/:id/syllabus
-// @access  Public
+// @access  Private (allows content writers to view their own course syllabi, even if unpublished)
 export const getCourseSyllabus = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id)
-      .select('title description duration price syllabus');
+      .select('title description duration price originalPrice syllabus isPublished isActive createdBy');
 
     if (!course) {
       return res.status(404).json({
@@ -481,14 +489,19 @@ export const getCourseSyllabus = async (req, res) => {
       });
     }
 
-    // For public, only show published and active courses
-    if (!req.user || req.user.role !== 'admin') {
-      if (!course.isPublished || !course.isActive) {
-        return res.status(404).json({
-          success: false,
-          message: 'Course not found'
-        });
-      }
+    // Check access permissions:
+    // 1. Admin can view any course syllabus
+    // 2. Content writer can view their own course syllabi (even if unpublished)
+    // 3. Regular users can only view published and active courses
+    const isAdmin = req.user && req.user.role === 'admin';
+    const isOwner = req.user && course.createdBy && course.createdBy.toString() === req.user._id.toString();
+    const isPublishedAndActive = course.isPublished && course.isActive;
+
+    if (!isAdmin && !isOwner && !isPublishedAndActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
     }
 
     res.status(200).json({
@@ -499,6 +512,7 @@ export const getCourseSyllabus = async (req, res) => {
         description: course.description,
         duration: course.duration,
         fee: course.price,
+        originalPrice: course.originalPrice,
         syllabus: course.syllabus || null
       }
     });
@@ -533,7 +547,7 @@ export const updateCourseSyllabus = async (req, res) => {
       });
     }
 
-    const { overview, modules, learningOutcomes, prerequisites, projects, certification } = req.body;
+    const { overview, modules, learningOutcomes, prerequisites, projects, instructors, certification } = req.body;
 
     // Initialize syllabus object if it doesn't exist
     if (!course.syllabus) {
@@ -543,6 +557,7 @@ export const updateCourseSyllabus = async (req, res) => {
         learningOutcomes: [],
         prerequisites: [],
         projects: [],
+        instructors: [],
         certification: ''
       };
     }
@@ -562,6 +577,9 @@ export const updateCourseSyllabus = async (req, res) => {
     }
     if (projects !== undefined && Array.isArray(projects)) {
       course.syllabus.projects = projects;
+    }
+    if (instructors !== undefined && Array.isArray(instructors)) {
+      course.syllabus.instructors = instructors;
     }
     if (certification !== undefined) {
       course.syllabus.certification = certification;

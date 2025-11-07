@@ -94,3 +94,44 @@ export const isContentWriter = authorize('content_writer');
 // Check if user is admin or content writer
 export const isAdminOrContentWriter = authorize('admin', 'content_writer');
 
+// Optional protect - attaches user if token exists, but doesn't fail if no token
+// Useful for endpoints that have different behavior based on authentication status
+export const optionalProtect = async (req, res, next) => {
+  try {
+    let token;
+
+    // Check for token in headers
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    // If no token, continue without user
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Get user from token
+      req.user = await User.findById(decoded.userId).select('-password');
+      
+      // If user not found or inactive, set req.user to null but don't fail
+      if (!req.user || !req.user.isActive) {
+        req.user = null;
+      }
+    } catch (error) {
+      // Token invalid, continue without user
+      req.user = null;
+    }
+
+    next();
+  } catch (error) {
+    // On error, continue without user
+    req.user = null;
+    next();
+  }
+};
+

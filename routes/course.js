@@ -10,7 +10,7 @@ import {
   getCourseSyllabus,
   updateCourseSyllabus
 } from '../controllers/courseController.js';
-import { protect, authorize } from '../middleware/auth.js';
+import { protect, authorize, optionalProtect } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -23,7 +23,8 @@ router.get('/my-courses/list', protect, authorize('admin', 'content_writer'), ge
 
 // Specific routes before dynamic :id
 router.put('/:id/publish', protect, authorize('admin', 'content_writer'), publishCourse);
-router.get('/:id/syllabus', getCourseSyllabus);
+// Syllabus route uses optional auth to allow content writers to view their drafts while keeping it public for published courses
+router.get('/:id/syllabus', optionalProtect, getCourseSyllabus);
 router.put('/:id/syllabus', protect, authorize('admin', 'content_writer'), updateCourseSyllabus);
 
 // Dynamic routes

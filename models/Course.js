@@ -133,7 +133,7 @@ const courseSchema = new mongoose.Schema({
       }],
       topics: [{
         type: String
-      }] // Keep for backward compatibility
+      }]
     }],
     learningOutcomes: [{
       type: String
@@ -142,6 +142,16 @@ const courseSchema = new mongoose.Schema({
       type: String
     }],
     projects: [{
+      name: {
+        type: String,
+        required: true
+      },
+      description: {
+        type: String,
+        default: ''
+      }
+    }],
+    instructors: [{
       name: {
         type: String,
         required: true
