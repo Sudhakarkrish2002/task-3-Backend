@@ -115,52 +115,72 @@ const courseSchema = new mongoose.Schema({
       type: String,
       default: ''
     },
-    modules: [{
-      title: {
-        type: String,
-        required: true
-      },
-      description: {
-        type: String,
-        default: ''
-      },
-      duration: {
-        type: String,
-        default: ''
-      },
-      learningOutcomes: [{
-        type: String
+    modules: {
+      type: [{
+        title: {
+          type: String,
+          required: true,
+          trim: true
+        },
+        description: {
+          type: String,
+          default: ''
+        },
+        duration: {
+          type: String,
+          default: ''
+        },
+        learningOutcomes: {
+          type: [String],
+          default: []
+        },
+        topics: {
+          type: [String],
+          default: []
+        }
       }],
-      topics: [{
-        type: String
-      }]
-    }],
-    learningOutcomes: [{
-      type: String
-    }],
-    prerequisites: [{
-      type: String
-    }],
-    projects: [{
-      name: {
-        type: String,
-        required: true
-      },
-      description: {
-        type: String,
-        default: ''
-      }
-    }],
-    instructors: [{
-      name: {
-        type: String,
-        required: true
-      },
-      description: {
-        type: String,
-        default: ''
-      }
-    }],
+      default: []
+    },
+    learningOutcomes: {
+      type: [String],
+      default: []
+    },
+    prerequisites: {
+      type: [String],
+      default: []
+    },
+    projects: {
+      type: [{
+        name: {
+          type: String,
+          required: true,
+          trim: true
+        },
+        description: {
+          type: String,
+          default: ''
+        },
+        points: {
+          type: [String],
+          default: []
+        }
+      }],
+      default: []
+    },
+    instructors: {
+      type: [{
+        name: {
+          type: String,
+          required: true,
+          trim: true
+        },
+        description: {
+          type: String,
+          default: ''
+        }
+      }],
+      default: []
+    },
     certification: {
       type: String,
       default: ''

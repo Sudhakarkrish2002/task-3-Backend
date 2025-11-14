@@ -1,5 +1,126 @@
 import Course from '../models/Course.js';
 
+const defaultSyllabus = () => ({
+  overview: '',
+  modules: [],
+  learningOutcomes: [],
+  prerequisites: [],
+  projects: [],
+  instructors: [],
+  certification: ''
+});
+
+const ensureSyllabusExists = (course) => {
+  if (!course.syllabus) {
+    course.syllabus = defaultSyllabus();
+  }
+};
+
+const sanitizeText = (value) => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  return '';
+};
+
+const sanitizeStringArray = (arr) => {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(item => item.length > 0);
+};
+
+const normalizeModules = (modules) => {
+  if (!Array.isArray(modules)) return [];
+  return modules
+    .map(module => ({
+      title: sanitizeText(module?.title),
+      description: sanitizeText(module?.description),
+      duration: sanitizeText(module?.duration),
+      learningOutcomes: sanitizeStringArray(module?.learningOutcomes),
+      topics: sanitizeStringArray(module?.topics)
+    }))
+    .filter(module => module.title.length > 0);
+};
+
+const buildProjectPoints = (project) => {
+  if (Array.isArray(project?.points) && project.points.length > 0) {
+    return sanitizeStringArray(project.points);
+  }
+  if (Array.isArray(project?.details) && project.details.length > 0) {
+    return sanitizeStringArray(project.details);
+  }
+  if (typeof project?.description === 'string' && project.description.trim().length > 0) {
+    const splitted = project.description
+      .split(/\n|\.(?=\s|$)/)
+      .map(part => part.trim())
+      .filter(Boolean);
+    return splitted;
+  }
+  return [];
+};
+
+const normalizeProjects = (projects) => {
+  if (!Array.isArray(projects)) return [];
+  return projects
+    .map(project => ({
+      name: sanitizeText(project?.name || project?.title),
+      description: sanitizeText(project?.description),
+      points: buildProjectPoints(project)
+    }))
+    .filter(project => project.name.length > 0);
+};
+
+const normalizeInstructors = (instructors) => {
+  if (!Array.isArray(instructors)) return [];
+  return instructors
+    .map(instructor => ({
+      name: sanitizeText(instructor?.name),
+      description: sanitizeText(instructor?.description)
+    }))
+    .filter(instructor => instructor.name.length > 0);
+};
+
+const applySyllabusUpdates = (course, syllabusPayload = {}) => {
+  if (!syllabusPayload || typeof syllabusPayload !== 'object') {
+    return;
+  }
+
+  ensureSyllabusExists(course);
+
+  const {
+    overview,
+    modules,
+    learningOutcomes,
+    prerequisites,
+    projects,
+    instructors,
+    certification
+  } = syllabusPayload;
+
+  if (overview !== undefined) {
+    course.syllabus.overview = sanitizeText(overview);
+  }
+  if (modules !== undefined) {
+    course.syllabus.modules = normalizeModules(modules);
+  }
+  if (learningOutcomes !== undefined) {
+    course.syllabus.learningOutcomes = sanitizeStringArray(learningOutcomes);
+  }
+  if (prerequisites !== undefined) {
+    course.syllabus.prerequisites = sanitizeStringArray(prerequisites);
+  }
+  if (projects !== undefined) {
+    course.syllabus.projects = normalizeProjects(projects);
+  }
+  if (instructors !== undefined) {
+    course.syllabus.instructors = normalizeInstructors(instructors);
+  }
+  if (certification !== undefined) {
+    course.syllabus.certification = sanitizeText(certification);
+  }
+};
+
 // @desc    Create a new course
 // @route   POST /api/courses
 // @access  Private/Admin or Content Writer
@@ -124,42 +245,7 @@ export const updateCourse = async (req, res) => {
 
     // Handle syllabus update if provided
     if (req.body.syllabus !== undefined) {
-      // Initialize syllabus object if it doesn't exist
-      if (!course.syllabus) {
-        course.syllabus = {
-          overview: '',
-          modules: [],
-          learningOutcomes: [],
-          prerequisites: [],
-          projects: [],
-          instructors: [],
-          certification: ''
-        };
-      }
-
-      const { overview, modules, learningOutcomes, prerequisites, projects, instructors, certification } = req.body.syllabus;
-
-      if (overview !== undefined) {
-        course.syllabus.overview = overview;
-      }
-      if (modules !== undefined && Array.isArray(modules)) {
-        course.syllabus.modules = modules;
-      }
-      if (learningOutcomes !== undefined && Array.isArray(learningOutcomes)) {
-        course.syllabus.learningOutcomes = learningOutcomes;
-      }
-      if (prerequisites !== undefined && Array.isArray(prerequisites)) {
-        course.syllabus.prerequisites = prerequisites;
-      }
-      if (projects !== undefined && Array.isArray(projects)) {
-        course.syllabus.projects = projects;
-      }
-      if (instructors !== undefined && Array.isArray(instructors)) {
-        course.syllabus.instructors = instructors;
-      }
-      if (certification !== undefined) {
-        course.syllabus.certification = certification;
-      }
+      applySyllabusUpdates(course, req.body.syllabus);
     }
 
     await course.save();
@@ -399,42 +485,7 @@ export const publishCourse = async (req, res) => {
 
     // Handle syllabus update if provided (for save and publish workflow)
     if (req.body.syllabus !== undefined) {
-      // Initialize syllabus object if it doesn't exist
-      if (!course.syllabus) {
-        course.syllabus = {
-          overview: '',
-          modules: [],
-          learningOutcomes: [],
-          prerequisites: [],
-          projects: [],
-          instructors: [],
-          certification: ''
-        };
-      }
-
-      const { overview, modules, learningOutcomes, prerequisites, projects, instructors, certification } = req.body.syllabus;
-
-      if (overview !== undefined) {
-        course.syllabus.overview = overview;
-      }
-      if (modules !== undefined && Array.isArray(modules)) {
-        course.syllabus.modules = modules;
-      }
-      if (learningOutcomes !== undefined && Array.isArray(learningOutcomes)) {
-        course.syllabus.learningOutcomes = learningOutcomes;
-      }
-      if (prerequisites !== undefined && Array.isArray(prerequisites)) {
-        course.syllabus.prerequisites = prerequisites;
-      }
-      if (projects !== undefined && Array.isArray(projects)) {
-        course.syllabus.projects = projects;
-      }
-      if (instructors !== undefined && Array.isArray(instructors)) {
-        course.syllabus.instructors = instructors;
-      }
-      if (certification !== undefined) {
-        course.syllabus.certification = certification;
-      }
+      applySyllabusUpdates(course, req.body.syllabus);
     }
 
     // Toggle publish status
@@ -504,6 +555,8 @@ export const getCourseSyllabus = async (req, res) => {
       });
     }
 
+    ensureSyllabusExists(course);
+
     res.status(200).json({
       success: true,
       data: {
@@ -513,7 +566,7 @@ export const getCourseSyllabus = async (req, res) => {
         duration: course.duration,
         fee: course.price,
         originalPrice: course.originalPrice,
-        syllabus: course.syllabus || null
+        syllabus: course.syllabus
       }
     });
   } catch (error) {
@@ -547,43 +600,7 @@ export const updateCourseSyllabus = async (req, res) => {
       });
     }
 
-    const { overview, modules, learningOutcomes, prerequisites, projects, instructors, certification } = req.body;
-
-    // Initialize syllabus object if it doesn't exist
-    if (!course.syllabus) {
-      course.syllabus = {
-        overview: '',
-        modules: [],
-        learningOutcomes: [],
-        prerequisites: [],
-        projects: [],
-        instructors: [],
-        certification: ''
-      };
-    }
-
-    // Update syllabus fields - only update if provided
-    if (overview !== undefined) {
-      course.syllabus.overview = overview;
-    }
-    if (modules !== undefined && Array.isArray(modules)) {
-      course.syllabus.modules = modules;
-    }
-    if (learningOutcomes !== undefined && Array.isArray(learningOutcomes)) {
-      course.syllabus.learningOutcomes = learningOutcomes;
-    }
-    if (prerequisites !== undefined && Array.isArray(prerequisites)) {
-      course.syllabus.prerequisites = prerequisites;
-    }
-    if (projects !== undefined && Array.isArray(projects)) {
-      course.syllabus.projects = projects;
-    }
-    if (instructors !== undefined && Array.isArray(instructors)) {
-      course.syllabus.instructors = instructors;
-    }
-    if (certification !== undefined) {
-      course.syllabus.certification = certification;
-    }
+    applySyllabusUpdates(course, req.body);
 
     await course.save();
 
